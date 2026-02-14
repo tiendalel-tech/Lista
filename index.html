@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inventario Hoja de Cálculo</title>
+
+<style>
+body{
+    font-family: Arial;
+    margin:0;
+    background:#f4f4f4;
+}
+
+header{
+    background:#111;
+    color:white;
+    padding:15px;
+    text-align:center;
+}
+
+.container{
+    padding:15px;
+}
+
+input{
+    padding:6px;
+    margin:4px;
+}
+
+button{
+    padding:6px 10px;
+    cursor:pointer;
+}
+
+table{
+    width:100%;
+    border-collapse: collapse;
+    background:white;
+    margin-top:15px;
+}
+
+th, td{
+    border:1px solid #ccc;
+    padding:6px;
+    text-align:center;
+}
+
+th{
+    background:#222;
+    color:white;
+}
+
+.eliminar{
+    background:red;
+    color:white;
+    border:none;
+    padding:4px 6px;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+<h2>Inventario - Formato Hoja de Cálculo</h2>
+</header>
+
+<div class="container">
+
+<h3>Agregar Producto</h3>
+
+<input type="text" id="nombreProducto" placeholder="Producto">
+<input type="number" id="unidadesCaja" placeholder="Unid/Caja">
+<input type="number" id="precioCompra" placeholder="Compra Caja">
+<input type="number" id="ventaUnidad" placeholder="Venta Unidad">
+<input type="number" id="ventaDocena" placeholder="Venta Docena">
+<input type="number" id="precioMayor" placeholder="Precio Mayor">
+<input type="date" id="fechaLote">
+
+<button onclick="agregarProducto()">Agregar</button>
+
+<br><br>
+
+<input type="text" id="buscador" placeholder="Buscar producto..." onkeyup="buscarProducto()">
+
+<table>
+<thead>
+<tr>
+<th>Producto</th>
+<th>Unid/Caja</th>
+<th>Compra Caja</th>
+<th>Costo Unidad</th>
+<th>Costo Docena</th>
+<th>Venta Unidad</th>
+<th>Venta Docena</th>
+<th>Mayor</th>
+<th>Lotes</th>
+<th>Acción</th>
+</tr>
+</thead>
+
+<tbody id="tablaProductos"></tbody>
+</table>
+
+</div>
+
+<script>
+
+let productos = JSON.parse(localStorage.getItem("inventario")) || [];
+
+function guardarLocal(){
+    localStorage.setItem("inventario", JSON.stringify(productos));
+}
+
+function agregarProducto(){
+
+    let nombre = nombreProducto.value;
+    let unidadesCaja = parseFloat(unidadesCaja.value);
+    let precioCompra = parseFloat(precioCompra.value);
+    let ventaUnidad = parseFloat(ventaUnidad.value);
+    let ventaDocena = parseFloat(ventaDocena.value);
+    let mayor = parseFloat(precioMayor.value);
+    let fecha = fechaLote.value;
+
+    if(!nombre || !unidadesCaja || !precioCompra || !ventaUnidad || !ventaDocena || !mayor || !fecha){
+        alert("Completa todos los campos");
+        return;
+    }
+
+    let costoUnidad = precioCompra / unidadesCaja;
+    let costoDocena = costoUnidad * 12;
+
+    productos.push({
+        nombre,
+        unidadesCaja,
+        precioCompra,
+        costoUnidad: costoUnidad.toFixed(2),
+        costoDocena: costoDocena.toFixed(2),
+        ventaUnidad,
+        ventaDocena,
+        precioMayor: mayor,
+        lotes:[{numero:1, fecha}]
+    });
+
+    guardarLocal();
+    mostrarProductos();
+}
+
+function mostrarProductos(lista = productos){
+
+    let tabla = document.getElementById("tablaProductos");
+    tabla.innerHTML = "";
+
+    lista.forEach((producto,index)=>{
+
+        let lotesTexto = producto.lotes.map(l => 
+            `L${l.numero}(${l.fecha})`
+        ).join("<br>");
+
+        tabla.innerHTML += `
+        <tr>
+        <td>${producto.nombre}</td>
+        <td>${producto.unidadesCaja}</td>
+        <td>S/ ${producto.precioCompra}</td>
+        <td>S/ ${producto.costoUnidad}</td>
+        <td>S/ ${producto.costoDocena}</td>
+        <td>S/ ${producto.ventaUnidad}</td>
+        <td>S/ ${producto.ventaDocena}</td>
+        <td>S/ ${producto.precioMayor}</td>
+        <td>${lotesTexto}</td>
+        <td><button class="eliminar" onclick="eliminarProducto(${index})">X</button></td>
+        </tr>
+        `;
+    });
+}
+
+function eliminarProducto(index){
+    if(confirm("¿Eliminar producto?")){
+        productos.splice(index,1);
+        guardarLocal();
+        mostrarProductos();
+    }
+}
+
+function buscarProducto(){
+
+    let texto = document.getElementById("buscador").value.toLowerCase();
+
+    let filtrados = productos.filter(p =>
+        p.nombre.toLowerCase().includes(texto)
+    );
+
+    mostrarProductos(filtrados);
+}
+
+mostrarProductos();
+
+</script>
+
+</body>
+</html>
