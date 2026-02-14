@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inventario Profesional</title>
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+    background-color: #f4f4f4;
+}
+
+h1 {
+    text-align: center;
+}
+
+.form-container {
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+input {
+    padding: 8px;
+    margin: 5px;
+}
+
+button {
+    padding: 6px 10px;
+    cursor: pointer;
+    border: none;
+    border-radius: 5px;
+    color: white;
+}
+
+.btn-agregar { background-color: #28a745; }
+.btn-eliminar { background-color: #dc3545; }
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+}
+
+th, td {
+    border: 1px solid #ccc;
+    padding: 8px;
+    text-align: center;
+}
+
+th {
+    background-color: #007bff;
+    color: white;
+}
+
+.search {
+    margin-bottom: 15px;
+}
+
+/* Colores de alerta */
+.vencimiento-cercano {
+    background-color: #ff4d4d !important;
+    color: white;
+}
+
+.stock-bajo {
+    background-color: #fff176 !important;
+}
+
+.prioridad-maxima {
+    background-color: #b71c1c !important;
+    color: white;
+}
+
+td input {
+    width: 100%;
+    border: none;
+    text-align: center;
+    background: transparent;
+}
+</style>
+</head>
+<body>
+
+<h1>Inventario Profesional</h1>
+
+<div class="form-container">
+    <input type="text" id="nombre" placeholder="Nombre del producto">
+    <input type="date" id="vencimiento">
+    <input type="number" id="compra" placeholder="Precio de compra">
+    <input type="number" id="venta" placeholder="Precio de venta">
+    <input type="number" id="docena" placeholder="Costo por docena">
+    <input type="number" id="cajas" placeholder="Cantidad de cajas">
+    <button class="btn-agregar" onclick="agregarProducto()">Agregar</button>
+</div>
+
+<div class="search">
+    <input type="text" id="buscador" placeholder="Buscar producto..." onkeyup="buscarProducto()">
+</div>
+
+<table>
+    <thead>
+        <tr>
+            <th>Nombre</th>
+            <th>Vencimiento</th>
+            <th>Compra</th>
+            <th>Venta</th>
+            <th>Costo Docena</th>
+            <th>Cajas</th>
+            <th>Eliminar</th>
+        </tr>
+    </thead>
+    <tbody id="tablaProductos"></tbody>
+</table>
+
+<script>
+let productos = JSON.parse(localStorage.getItem("productos")) || [];
+
+function guardarLocalStorage() {
+    localStorage.setItem("productos", JSON.stringify(productos));
+}
+
+function ordenarPorVencimiento() {
+    productos.sort((a, b) => new Date(a.vencimiento) - new Date(b.vencimiento));
+}
+
+function agregarProducto() {
+    const producto = {
+        nombre: document.getElementById("nombre").value,
+        vencimiento: document.getElementById("vencimiento").value,
+        compra: document.getElementById("compra").value,
+        venta: document.getElementById("venta").value,
+        docena: document.getElementById("docena").value,
+        cajas: document.getElementById("cajas").value
+    };
+
+    if(producto.nombre === "") {
+        alert("El nombre es obligatorio");
+        return;
+    }
+
+    productos.push(producto);
+    ordenarPorVencimiento();
+    guardarLocalStorage();
+    mostrarProductos();
+    limpiarFormulario();
+}
+
+function mostrarProductos(lista = productos) {
+    const tabla = document.getElementById("tablaProductos");
+    tabla.innerHTML = "";
+
+    lista.forEach((p, index) => {
+
+        const hoy = new Date();
+        const venc = new Date(p.vencimiento);
+        const diferenciaDias = (venc - hoy) / (1000 * 60 * 60 * 24);
+
+        const stock = Number(p.cajas);
+
+        let clase = "";
+
+        const vencePronto = diferenciaDias <= 30;
+        const stockBajo = stock <= 2;
+
+        if (vencePronto && stockBajo) {
+            clase = "prioridad-maxima";
+        } else if (vencePronto) {
+            clase = "vencimiento-cercano";
+        } else if (stockBajo) {
+            clase = "stock-bajo";
+        }
+
+        tabla.innerHTML += `
+            <tr class="${clase}">
+                <td><input value="${p.nombre}" onchange="actualizar(${index}, 'nombre', this.value)"></td>
+                <td><input type="date" value="${p.vencimiento}" onchange="actualizar(${index}, 'vencimiento', this.value)"></td>
+                <td><input type="number" value="${p.compra}" onchange="actualizar(${index}, 'compra', this.value)"></td>
+                <td><input type="number" value="${p.venta}" onchange="actualizar(${index}, 'venta', this.value)"></td>
+                <td><input type="number" value="${p.docena}" onchange="actualizar(${index}, 'docena', this.value)"></td>
+                <td><input type="number" value="${p.cajas}" onchange="actualizar(${index}, 'cajas', this.value)"></td>
+                <td><button class="btn-eliminar" onclick="eliminarProducto(${index})">X</button></td>
+            </tr>
+        `;
+    });
+}
+
+function actualizar(index, campo, valor) {
+    productos[index][campo] = valor;
+    ordenarPorVencimiento();
+    guardarLocalStorage();
+    mostrarProductos();
+}
+
+function eliminarProducto(index) {
+    if(confirm("¿Eliminar producto?")){
+        productos.splice(index, 1);
+        guardarLocalStorage();
+        mostrarProductos();
+    }
+}
+
+function buscarProducto() {
+    const texto = document.getElementById("buscador").value.toLowerCase();
+    const filtrados = productos.filter(p =>
+        p.nombre.toLowerCase().includes(texto)
+    );
+    mostrarProductos(filtrados);
+}
+
+function limpiarFormulario() {
+    document.getElementById("nombre").value = "";
+    document.getElementById("vencimiento").value = "";
+    document.getElementById("compra").value = "";
+    document.getElementById("venta").value = "";
+    document.getElementById("docena").value = "";
+    document.getElementById("cajas").value = "";
+}
+
+ordenarPorVencimiento();
+mostrarProductos();
+</script>
+
+</body>
+</html>
